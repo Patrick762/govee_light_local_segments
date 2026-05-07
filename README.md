@@ -1,3 +1,5 @@
+# WORK IN PROGRESS
+
 # govee_light_local_segments
 govee_light_local but with segment control as service
 
