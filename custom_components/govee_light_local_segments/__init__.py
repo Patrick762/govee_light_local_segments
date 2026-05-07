@@ -9,17 +9,39 @@ import logging
 from govee_local_api.controller import LISTENING_PORT
 
 from homeassistant.components import network
-from homeassistant.const import Platform
-from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import Platform, ATTR_CONFIG_ENTRY_ID
+from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse
+from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
+from homeassistant.helpers.typing import ConfigType
 
-from .const import DISCOVERY_TIMEOUT, DOMAIN
+from .const import DISCOVERY_TIMEOUT, DOMAIN, SERVICE_SET_SEGMENT
 from .coordinator import GoveeLocalApiCoordinator, GoveeLocalConfigEntry
 
 PLATFORMS: list[Platform] = [Platform.LIGHT]
 
 _LOGGER = logging.getLogger(__name__)
 
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Set up my integration."""
+
+    async def async_set_segment(call: ServiceCall) -> ServiceResponse:
+        """Get the schedule for a specific range."""
+        if not (entry := hass.config_entries.async_get_entry(call.data[ATTR_CONFIG_ENTRY_ID])):
+            raise ServiceValidationError("Entry not found")
+        if entry.state is not ConfigEntryState.LOADED:
+            raise ServiceValidationError("Entry not loaded")
+        # TODO validate the rest of the service data
+
+        # TODO get device from coordinator and call set_segment on it
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_SET_SEGMENT,
+        async_set_segment,
+    )
+
+    return True
 
 async def async_setup_entry(hass: HomeAssistant, entry: GoveeLocalConfigEntry) -> bool:
     """Set up Govee light local from a config entry."""

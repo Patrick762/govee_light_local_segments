@@ -1,0 +1,21 @@
+set_segment:
+  name: Set Segment
+  description: Set a segment of a Govee light
+  target:
+    device:
+      filter:
+        integration: govee_light_local_segments
+  fields:
+    segment:
+      description: The index of the segment to set
+      required: true
+      example: 1
+      selector:
+        number:
+          min: 1
+    color:
+      description: The color to set the segment to
+      required: true
+      example: "#FF0000"
+      selector:
+        color_rgb:
