@@ -45,18 +45,29 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
         device_sn = device.serial_number
 
         sent = False
+        
+        segment = int(call.data.get("segment"))
+        r = int(call.data["color"][0])
+        g = int(call.data["color"][1])
+        b = int(call.data["color"][2])
 
         for govee_device in coordinator.devices:
             if govee_device.fingerprint == device_sn:
+                if 1 > segment or segment > govee_device.capabilities.segments_count:
+                    raise ServiceValidationError(f"Segment number out of range {segment} for device with {govee_device.capabilities.segments_count} segments")
+
                 await coordinator.set_segment_color(
                     device=govee_device,
-                    segment=call.data["segment"],
-                    red=call.data["color"][0],
-                    green=call.data["color"][1],
-                    blue=call.data["color"][2],
+                    segment=segment,
+                    red=r,
+                    green=g,
+                    blue=b,
                 )
                 sent = True
                 break
+
+        if not sent:
+            raise ServiceValidationError("Device not found")
 
         return {"sent": sent}
 
