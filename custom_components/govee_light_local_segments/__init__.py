@@ -10,9 +10,10 @@ from govee_local_api.controller import LISTENING_PORT
 
 from homeassistant.components import network
 from homeassistant.config_entries import ConfigEntryState
-from homeassistant.const import Platform, ATTR_CONFIG_ENTRY_ID
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse
 from homeassistant.exceptions import ConfigEntryNotReady, ServiceValidationError
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.typing import ConfigType
 
 from .const import DISCOVERY_TIMEOUT, DOMAIN, SERVICE_SET_SEGMENT
@@ -26,14 +27,38 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up my integration."""
 
     async def async_set_segment(call: ServiceCall) -> ServiceResponse:
-        """Get the schedule for a specific range."""
-        if not (entry := hass.config_entries.async_get_entry(call.data[ATTR_CONFIG_ENTRY_ID])):
+        """Set the color for a specific segment."""
+        if call.data.get("device_id") is None or call.data.get("segment") is None or call.data.get("color") is None:
+            raise ServiceValidationError("Missing required service data: device_id, segment and color")
+        
+        if not (entries := hass.config_entries.async_entries(DOMAIN)):
+            raise ServiceValidationError("Not configured")
+        if not (entry := entries[0]):
             raise ServiceValidationError("Entry not found")
         if entry.state is not ConfigEntryState.LOADED:
             raise ServiceValidationError("Entry not loaded")
-        # TODO validate the rest of the service data
 
-        # TODO get device from coordinator and call set_segment on it
+        coordinator = entry.runtime_data
+
+        device_registry = dr.async_get(hass)
+        device = device_registry.async_get(call.data["device_id"])
+        device_sn = device.serial_number
+
+        sent = False
+
+        for govee_device in coordinator.devices:
+            if govee_device.fingerprint == device_sn:
+                await coordinator.set_segment_color(
+                    device=govee_device,
+                    segment=call.data["segment"],
+                    red=call.data["color"][0],
+                    green=call.data["color"][1],
+                    blue=call.data["color"][2],
+                )
+                sent = True
+                break
+
+        return {"sent": sent}
 
     hass.services.async_register(
         DOMAIN,
